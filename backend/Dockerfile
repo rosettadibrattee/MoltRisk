@@ -6,9 +6,9 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY pyproject.toml /app/pyproject.toml
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .
-
 COPY src /app/src
+
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir /app
 
 ENV PYTHONPATH=/app/src
 EXPOSE 8000

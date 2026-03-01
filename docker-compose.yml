@@ -1,0 +1,31 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DB_URL: ${DB_URL:-sqlite:///./data.db}
+      DEFAULT_AGENT_TIMEOUT: ${DEFAULT_AGENT_TIMEOUT:-30}
+      TURN_SECONDS: ${TURN_SECONDS:-180}
+      HISTORY_EVENT_WINDOW: ${HISTORY_EVENT_WINDOW:-50}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_BASE: ${VITE_API_BASE:-http://localhost:8000}
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"

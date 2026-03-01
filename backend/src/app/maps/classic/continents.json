@@ -1,0 +1,40 @@
+{
+  "north_america": {
+    "name": "North America",
+    "bonus": 5,
+    "territories": [
+      "alaska", "northwest_territory", "greenland", "alberta", "ontario", "quebec",
+      "western_united_states", "eastern_united_states", "central_america"
+    ]
+  },
+  "south_america": {
+    "name": "South America",
+    "bonus": 2,
+    "territories": ["venezuela", "peru", "brazil", "argentina"]
+  },
+  "europe": {
+    "name": "Europe",
+    "bonus": 5,
+    "territories": [
+      "iceland", "scandinavia", "ukraine", "great_britain", "northern_europe", "western_europe", "southern_europe"
+    ]
+  },
+  "africa": {
+    "name": "Africa",
+    "bonus": 3,
+    "territories": ["north_africa", "egypt", "east_africa", "congo", "south_africa", "madagascar"]
+  },
+  "asia": {
+    "name": "Asia",
+    "bonus": 7,
+    "territories": [
+      "ural", "siberia", "yakutsk", "kamchatka", "irkutsk", "mongolia", "japan",
+      "afghanistan", "middle_east", "india", "siam", "china"
+    ]
+  },
+  "australia": {
+    "name": "Australia",
+    "bonus": 2,
+    "territories": ["indonesia", "new_guinea", "western_australia", "eastern_australia"]
+  }
+}
