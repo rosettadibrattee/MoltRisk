@@ -44,10 +44,10 @@ export function startGame(gameId: string) {
   });
 }
 
-export function submitAction(gameId: string, playerId: string, action: Record<string, unknown>) {
+export function submitAction(gameId: string, action: Record<string, unknown>) {
   return api<{ accepted: boolean; errors: string[]; state: GameState }>(`/api/games/${gameId}/actions`, {
     method: "POST",
-    body: JSON.stringify({ player_id: playerId, action }),
+    body: JSON.stringify(action),
   });
 }
 

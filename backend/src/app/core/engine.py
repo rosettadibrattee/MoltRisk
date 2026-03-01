@@ -196,24 +196,32 @@ class GameManager:
         self._initialize_state(runtime)
         state.status = GameStatus.RUNNING
         state.current_player = state.players[0].id
-        self._append_event(runtime, make_event("system", {"message": "Game started"}))
+        start_event = make_event("system", {"message": "Game started"})
+        self._append_event(runtime, start_event)
         self.repo.save_state(state)
-        await self.broadcast_state(game_id)
+        await self.broadcast_event(game_id, start_event.model_dump(mode="json"))
 
         runtime.task = asyncio.create_task(self._run_game(game_id))
         return state
 
-    async def submit_action(self, game_id: str, player_id: str, bundle_payload: dict | str | None) -> tuple[bool, list[str], GameState]:
+    async def submit_action(self, game_id: str, bundle_payload: ActionBundle | dict | str | None) -> tuple[bool, list[str], GameState]:
         runtime = self._runtime(game_id)
-        bundle, error = parse_action_bundle(bundle_payload)
+        if isinstance(bundle_payload, ActionBundle):
+            bundle = bundle_payload
+            error = None
+        else:
+            bundle, error = parse_action_bundle(bundle_payload)
         if error or bundle is None:
             return False, [error or "Invalid action bundle"], runtime.state
 
-        player = self._player(runtime.state, player_id)
-        if player.kind != PlayerKind.HUMAN:
-            return False, ["Only human players can submit via this endpoint"], runtime.state
+        if runtime.state.current_player is None:
+            return False, ["No active turn"], runtime.state
 
-        queue = runtime.human_queues.setdefault(player_id, asyncio.Queue())
+        player = self._player(runtime.state, runtime.state.current_player)
+        if player.kind != PlayerKind.HUMAN:
+            return False, ["Current turn is not a human player"], runtime.state
+
+        queue = runtime.human_queues.setdefault(player.id, asyncio.Queue())
         await queue.put(bundle)
         return True, [], runtime.state
 
@@ -237,17 +245,19 @@ class GameManager:
         await self.start_game(state.game_id)
 
         runtime = self._runtime(state.game_id)
-        max_wait = 120
+        turn_cap = 200
         start = time.time()
-        while runtime.state.status != GameStatus.FINISHED and time.time() - start < max_wait:
+        while runtime.state.status != GameStatus.FINISHED and runtime.state.turn <= turn_cap:
             await asyncio.sleep(0.2)
+            if time.time() - start > 180:
+                break
 
         return {
             "game_id": state.game_id,
             "status": runtime.state.status,
             "winner": runtime.state.winner,
             "turn": runtime.state.turn,
-            "completed": runtime.state.status == GameStatus.FINISHED,
+            "completed": runtime.state.status == GameStatus.FINISHED and runtime.state.winner is not None,
         }
 
     async def broadcast_state(self, game_id: str) -> None:
@@ -256,6 +266,7 @@ class GameManager:
 
     async def broadcast_event(self, game_id: str, event: dict[str, Any]) -> None:
         await self.connections.broadcast(game_id, {"type": "event", "payload": event})
+        await self.broadcast_state(game_id)
 
     def _runtime(self, game_id: str) -> GameRuntime:
         runtime = self.games.get(game_id)
@@ -366,12 +377,16 @@ class GameManager:
 
                 for phase in [Phase.REINFORCE, Phase.ATTACK, Phase.FORTIFY]:
                     state.phase = phase
-                    await self.broadcast_state(game_id)
+                    phase_event = make_event(
+                        "phase_change",
+                        {"turn": state.turn, "player": current.id, "phase": phase.value},
+                    )
+                    self._append_event(runtime, phase_event)
+                    await self.broadcast_event(game_id, phase_event.model_dump(mode="json"))
 
                     bundle = await self._get_bundle(runtime, current, phase, deadline)
                     await self._apply_bundle(runtime, current, bundle, phase)
                     self.repo.save_state(state)
-                    await self.broadcast_state(game_id)
 
                     if state.status == GameStatus.FINISHED:
                         break
@@ -399,24 +414,27 @@ class GameManager:
                     event = make_event("win", {"winner": winner.id, "name": winner.name})
                     self._append_event(runtime, event)
                     await self.broadcast_event(game_id, event.model_dump(mode="json"))
-                    await self.broadcast_state(game_id)
                     self.repo.save_state(state)
                     break
 
                 nxt = self._next_player(state, current.id)
                 state.current_player = nxt.id
                 state.turn += 1
+                advance_event = make_event(
+                    "turn_advance",
+                    {"turn": state.turn, "current_player": state.current_player},
+                )
+                self._append_event(runtime, advance_event)
+                await self.broadcast_event(game_id, advance_event.model_dump(mode="json"))
                 self.repo.save_state(state)
-                await self.broadcast_state(game_id)
 
-                if state.turn > 500:
+                if state.turn > 200:
                     leader = max(self._alive_players(state), key=lambda p: len(rules.owned_territories(state, p.id)))
                     state.status = GameStatus.FINISHED
                     state.winner = leader.id
                     event = make_event("win", {"winner": leader.id, "name": leader.name, "reason": "turn_cap"})
                     self._append_event(runtime, event)
                     await self.broadcast_event(game_id, event.model_dump(mode="json"))
-                    await self.broadcast_state(game_id)
                     self.repo.save_state(state)
                     break
         except Exception as exc:
@@ -425,7 +443,6 @@ class GameManager:
             await self.broadcast_event(game_id, event.model_dump(mode="json"))
             state.status = GameStatus.FINISHED
             self.repo.save_state(state)
-            await self.broadcast_state(game_id)
 
     async def _get_bundle(self, runtime: GameRuntime, player: Player, phase: Phase, deadline: float) -> ActionBundle:
         state = runtime.state

@@ -83,11 +83,11 @@ export function GamePage() {
   const territoryIds = Object.keys(state.territories);
 
   const submitBundle = async (bundle: Record<string, unknown>) => {
-    if (!gameId || !actor) {
+    if (!gameId) {
       return;
     }
     try {
-      const response = await submitAction(gameId, actor, bundle);
+      const response = await submitAction(gameId, bundle);
       if (!response.accepted && response.errors.length) {
         setError(response.errors.join(" | "));
       } else {
@@ -140,9 +140,6 @@ export function GamePage() {
           messages={state.chat}
           players={state.players}
           onSend={async (payload) => {
-            if (!actor) {
-              return;
-            }
             await submitBundle({ phase_actions: [], chat: [payload] });
           }}
         />

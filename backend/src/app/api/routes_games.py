@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -28,11 +26,6 @@ class AgentPlayerRequest(BaseModel):
 
 class HumanPlayerRequest(BaseModel):
     name: str
-
-
-class HumanActionRequest(BaseModel):
-    player_id: str
-    action: dict[str, Any] | ActionBundle
 
 
 @router.post("/games", response_model=GameState)
@@ -76,6 +69,6 @@ async def start_game(game_id: str) -> GameState:
 
 
 @router.post("/games/{game_id}/actions")
-async def submit_human_action(game_id: str, req: HumanActionRequest):
-    accepted, errors, state = await game_manager.submit_action(game_id, req.player_id, req.action)
+async def submit_human_action(game_id: str, action: ActionBundle):
+    accepted, errors, state = await game_manager.submit_action(game_id, action)
     return {"accepted": accepted, "errors": errors, "state": state.model_dump(mode="json")}
