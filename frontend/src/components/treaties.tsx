@@ -1,32 +1,33 @@
 import type { Treaty, TreatyOffer } from "../api/types";
 
-interface TreatiesProps {
-  treaties: Treaty[];
-  offers: TreatyOffer[];
-}
+interface Props { treaties: Treaty[]; offers: TreatyOffer[]; }
 
-export function TreatiesPanel({ treaties, offers }: TreatiesProps) {
+export function TreatiesPanel({ treaties, offers }: Props) {
   return (
-    <section className="panel treaties-panel">
+    <div className="panel">
       <h3>Treaties</h3>
       <h4>Active</h4>
-      <ul>
-        {treaties.length === 0 && <li>No active treaties</li>}
-        {treaties.map((treaty) => (
-          <li key={treaty.id}>
-            <strong>{treaty.type}</strong> {treaty.players.join(" ↔ ")} (expires turn {treaty.expires_turn})
-          </li>
-        ))}
-      </ul>
+      {treaties.length === 0 && <div className="empty-state">No active treaties</div>}
+      {treaties.map((t) => (
+        <div key={t.id} className="treaty-item">
+          <span className={`treaty-type ${t.type === "non_aggression" ? "nap" : "trade"}`}>
+            {t.type === "non_aggression" ? "NAP" : "Trade"}
+          </span>
+          <div style={{ fontSize: "0.8rem" }}>{t.players.join(" ↔ ")}</div>
+          <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>expires turn {t.expires_turn}</div>
+        </div>
+      ))}
       <h4>Pending Offers</h4>
-      <ul>
-        {offers.length === 0 && <li>No pending offers</li>}
-        {offers.map((offer) => (
-          <li key={offer.id}>
-            <strong>{offer.type}</strong> {offer.from_player} → {offer.to_player} ({offer.duration_turns} turns)
-          </li>
-        ))}
-      </ul>
-    </section>
+      {offers.length === 0 && <div className="empty-state">No pending offers</div>}
+      {offers.map((o) => (
+        <div key={o.id} className="treaty-item">
+          <span className={`treaty-type ${o.type === "non_aggression" ? "nap" : "trade"}`}>
+            {o.type === "non_aggression" ? "NAP" : "Trade"}
+          </span>
+          <div style={{ fontSize: "0.8rem" }}>{o.from_player} → {o.to_player}</div>
+          <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{o.duration_turns} turns</div>
+        </div>
+      ))}
+    </div>
   );
 }

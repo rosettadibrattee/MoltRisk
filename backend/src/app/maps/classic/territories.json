@@ -8,12 +8,10 @@
   {"id": "western_united_states", "name": "Western US", "continent": "north_america"},
   {"id": "eastern_united_states", "name": "Eastern US", "continent": "north_america"},
   {"id": "central_america", "name": "Central America", "continent": "north_america"},
-
   {"id": "venezuela", "name": "Venezuela", "continent": "south_america"},
   {"id": "peru", "name": "Peru", "continent": "south_america"},
   {"id": "brazil", "name": "Brazil", "continent": "south_america"},
   {"id": "argentina", "name": "Argentina", "continent": "south_america"},
-
   {"id": "iceland", "name": "Iceland", "continent": "europe"},
   {"id": "scandinavia", "name": "Scandinavia", "continent": "europe"},
   {"id": "ukraine", "name": "Ukraine", "continent": "europe"},
@@ -21,14 +19,12 @@
   {"id": "northern_europe", "name": "Northern Europe", "continent": "europe"},
   {"id": "western_europe", "name": "Western Europe", "continent": "europe"},
   {"id": "southern_europe", "name": "Southern Europe", "continent": "europe"},
-
   {"id": "north_africa", "name": "North Africa", "continent": "africa"},
   {"id": "egypt", "name": "Egypt", "continent": "africa"},
   {"id": "east_africa", "name": "East Africa", "continent": "africa"},
   {"id": "congo", "name": "Congo", "continent": "africa"},
   {"id": "south_africa", "name": "South Africa", "continent": "africa"},
   {"id": "madagascar", "name": "Madagascar", "continent": "africa"},
-
   {"id": "ural", "name": "Ural", "continent": "asia"},
   {"id": "siberia", "name": "Siberia", "continent": "asia"},
   {"id": "yakutsk", "name": "Yakutsk", "continent": "asia"},
@@ -41,7 +37,6 @@
   {"id": "india", "name": "India", "continent": "asia"},
   {"id": "siam", "name": "Siam", "continent": "asia"},
   {"id": "china", "name": "China", "continent": "asia"},
-
   {"id": "indonesia", "name": "Indonesia", "continent": "australia"},
   {"id": "new_guinea", "name": "New Guinea", "continent": "australia"},
   {"id": "western_australia", "name": "Western Australia", "continent": "australia"},

@@ -8,12 +8,10 @@
   "western_united_states": ["alberta", "ontario", "eastern_united_states", "central_america"],
   "eastern_united_states": ["western_united_states", "ontario", "quebec", "central_america"],
   "central_america": ["western_united_states", "eastern_united_states", "venezuela"],
-
   "venezuela": ["central_america", "peru", "brazil"],
   "peru": ["venezuela", "brazil", "argentina"],
   "brazil": ["venezuela", "peru", "argentina", "north_africa"],
   "argentina": ["peru", "brazil"],
-
   "iceland": ["greenland", "great_britain", "scandinavia"],
   "scandinavia": ["iceland", "great_britain", "northern_europe", "ukraine"],
   "ukraine": ["scandinavia", "northern_europe", "southern_europe", "middle_east", "afghanistan", "ural"],
@@ -21,14 +19,12 @@
   "northern_europe": ["great_britain", "scandinavia", "ukraine", "southern_europe", "western_europe"],
   "western_europe": ["great_britain", "northern_europe", "southern_europe", "north_africa"],
   "southern_europe": ["western_europe", "northern_europe", "ukraine", "middle_east", "egypt", "north_africa"],
-
   "north_africa": ["brazil", "western_europe", "southern_europe", "egypt", "east_africa", "congo"],
   "egypt": ["north_africa", "southern_europe", "middle_east", "east_africa"],
   "east_africa": ["egypt", "north_africa", "congo", "south_africa", "madagascar", "middle_east"],
   "congo": ["north_africa", "east_africa", "south_africa"],
   "south_africa": ["congo", "east_africa", "madagascar"],
   "madagascar": ["east_africa", "south_africa"],
-
   "ural": ["ukraine", "siberia", "china", "afghanistan"],
   "siberia": ["ural", "yakutsk", "irkutsk", "mongolia", "china"],
   "yakutsk": ["siberia", "irkutsk", "kamchatka"],
@@ -41,7 +37,6 @@
   "india": ["middle_east", "afghanistan", "china", "siam"],
   "siam": ["india", "china", "indonesia"],
   "china": ["ural", "siberia", "mongolia", "siam", "india", "afghanistan"],
-
   "indonesia": ["siam", "new_guinea", "western_australia"],
   "new_guinea": ["indonesia", "western_australia", "eastern_australia"],
   "western_australia": ["indonesia", "new_guinea", "eastern_australia"],

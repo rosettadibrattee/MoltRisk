@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-
 import type { Player, TerritoryState } from "../api/types";
 
 interface MapProps {
@@ -7,149 +6,145 @@ interface MapProps {
   players: Player[];
 }
 
-type TerritoryLayout = {
-  id: string;
-  name: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
+// Stylized territory layout: center positions (cx, cy) and polygon paths
+// Arranged as a recognizable world map with proper continental positioning
+const TERRITORIES: Record<string, { name: string; cx: number; cy: number; path: string }> = {
+  // ─── North America ───
+  alaska:                 { name: "Alaska",       cx: 75,  cy: 68,  path: "M40,45 L70,35 L110,40 L115,65 L105,95 L70,100 L40,85 Z" },
+  northwest_territory:    { name: "NW Territory", cx: 170, cy: 62,  path: "M120,35 L180,25 L230,35 L225,65 L210,90 L140,95 L115,70 Z" },
+  greenland:              { name: "Greenland",    cx: 320, cy: 40,  path: "M280,20 L330,10 L370,20 L365,50 L340,70 L290,60 L275,40 Z" },
+  alberta:                { name: "Alberta",      cx: 135, cy: 125, path: "M100,100 L160,100 L170,120 L165,150 L110,150 L95,130 Z" },
+  ontario:                { name: "Ontario",      cx: 215, cy: 125, path: "M175,100 L255,100 L260,125 L250,150 L185,155 L170,130 Z" },
+  quebec:                 { name: "Quebec",       cx: 305, cy: 115, path: "M265,90 L330,85 L350,105 L340,140 L280,145 L260,120 Z" },
+  western_united_states:  { name: "Western US",   cx: 120, cy: 190, path: "M80,160 L155,155 L165,180 L155,220 L90,225 L75,195 Z" },
+  eastern_united_states:  { name: "Eastern US",   cx: 210, cy: 195, path: "M165,160 L260,155 L270,185 L255,225 L175,225 L160,195 Z" },
+  central_america:        { name: "C. America",   cx: 165, cy: 275, path: "M130,245 L195,240 L210,270 L195,305 L145,310 L125,280 Z" },
+
+  // ─── South America ───
+  venezuela:              { name: "Venezuela",    cx: 240, cy: 340, path: "M200,315 L275,310 L290,340 L275,370 L210,375 L195,350 Z" },
+  peru:                   { name: "Peru",         cx: 220, cy: 420, path: "M185,385 L255,380 L265,415 L250,455 L195,460 L180,425 Z" },
+  brazil:                 { name: "Brazil",       cx: 310, cy: 405, path: "M270,365 L360,360 L375,400 L355,445 L280,450 L260,410 Z" },
+  argentina:              { name: "Argentina",    cx: 250, cy: 510, path: "M215,470 L285,465 L295,505 L275,555 L225,560 L210,520 Z" },
+
+  // ─── Europe ───
+  iceland:                { name: "Iceland",      cx: 420, cy: 65,  path: "M400,48 L440,45 L450,60 L445,80 L415,83 L395,70 Z" },
+  scandinavia:            { name: "Scandinavia",  cx: 495, cy: 65,  path: "M465,40 L520,35 L535,55 L530,90 L480,95 L460,70 Z" },
+  ukraine:                { name: "Ukraine",      cx: 575, cy: 105, path: "M540,80 L615,75 L630,100 L620,135 L555,140 L535,115 Z" },
+  great_britain:          { name: "Britain",      cx: 425, cy: 130, path: "M405,112 L445,108 L455,125 L450,148 L415,152 L400,135 Z" },
+  northern_europe:        { name: "N. Europe",    cx: 490, cy: 140, path: "M460,120 L525,115 L535,135 L528,162 L470,167 L455,145 Z" },
+  western_europe:         { name: "W. Europe",    cx: 435, cy: 200, path: "M408,175 L465,170 L475,195 L465,225 L420,230 L405,205 Z" },
+  southern_europe:        { name: "S. Europe",    cx: 510, cy: 205, path: "M478,180 L545,175 L560,200 L548,232 L490,237 L475,210 Z" },
+
+  // ─── Africa ───
+  north_africa:           { name: "N. Africa",    cx: 460, cy: 310, path: "M410,280 L510,275 L525,305 L515,340 L425,345 L405,315 Z" },
+  egypt:                  { name: "Egypt",        cx: 555, cy: 300, path: "M525,278 L590,273 L600,295 L592,325 L535,330 L520,305 Z" },
+  east_africa:            { name: "E. Africa",    cx: 575, cy: 390, path: "M545,355 L610,350 L625,385 L610,425 L555,430 L540,395 Z" },
+  congo:                  { name: "Congo",        cx: 505, cy: 400, path: "M475,375 L540,370 L550,395 L540,425 L485,430 L470,405 Z" },
+  south_africa:           { name: "S. Africa",    cx: 520, cy: 480, path: "M485,450 L555,445 L565,475 L550,510 L495,515 L480,485 Z" },
+  madagascar:             { name: "Madagascar",   cx: 610, cy: 480, path: "M590,455 L630,450 L638,475 L628,505 L595,510 L585,480 Z" },
+
+  // ─── Asia ───
+  ural:                   { name: "Ural",         cx: 680, cy: 80,  path: "M650,55 L710,50 L722,75 L715,108 L660,113 L645,85 Z" },
+  siberia:                { name: "Siberia",      cx: 770, cy: 65,  path: "M730,40 L810,35 L825,60 L815,95 L740,100 L725,70 Z" },
+  yakutsk:                { name: "Yakutsk",      cx: 860, cy: 55,  path: "M830,30 L895,25 L908,50 L900,80 L840,85 L825,58 Z" },
+  kamchatka:              { name: "Kamchatka",    cx: 940, cy: 60,  path: "M910,35 L970,30 L985,55 L975,88 L920,93 L905,65 Z" },
+  irkutsk:                { name: "Irkutsk",      cx: 845, cy: 120, path: "M815,98 L878,93 L890,115 L882,145 L823,150 L810,125 Z" },
+  mongolia:               { name: "Mongolia",     cx: 790, cy: 155, path: "M755,135 L830,130 L843,152 L833,178 L763,183 L750,160 Z" },
+  japan:                  { name: "Japan",        cx: 935, cy: 145, path: "M915,125 L955,120 L965,140 L958,168 L920,172 L910,150 Z" },
+  afghanistan:            { name: "Afghanistan",  cx: 670, cy: 175, path: "M638,155 L705,150 L718,172 L708,200 L648,205 L635,180 Z" },
+  middle_east:            { name: "Mid. East",    cx: 610, cy: 255, path: "M575,232 L648,227 L660,250 L650,280 L585,285 L570,260 Z" },
+  india:                  { name: "India",        cx: 720, cy: 245, path: "M688,220 L755,215 L768,240 L755,272 L698,277 L683,250 Z" },
+  siam:                   { name: "Siam",         cx: 790, cy: 270, path: "M762,248 L820,243 L832,265 L822,295 L770,300 L758,275 Z" },
+  china:                  { name: "China",        cx: 770, cy: 195, path: "M728,170 L818,165 L832,190 L820,220 L738,225 L722,198 Z" },
+
+  // ─── Australia ───
+  indonesia:              { name: "Indonesia",    cx: 830, cy: 370, path: "M798,350 L865,345 L878,365 L868,395 L808,400 L795,375 Z" },
+  new_guinea:             { name: "New Guinea",   cx: 920, cy: 375, path: "M890,355 L952,350 L965,372 L955,398 L898,403 L885,378 Z" },
+  western_australia:      { name: "W. Australia", cx: 860, cy: 455, path: "M825,430 L895,425 L908,450 L898,480 L835,485 L820,458 Z" },
+  eastern_australia:      { name: "E. Australia", cx: 935, cy: 460, path: "M905,435 L970,430 L983,455 L972,485 L912,490 L900,462 Z" },
 };
 
-const LAYOUT: TerritoryLayout[] = [
-  { id: "alaska", name: "Alaska", x: 20, y: 40, w: 110, h: 70 },
-  { id: "northwest_territory", name: "Northwest Territory", x: 140, y: 40, w: 130, h: 70 },
-  { id: "greenland", name: "Greenland", x: 280, y: 20, w: 130, h: 80 },
-  { id: "alberta", name: "Alberta", x: 90, y: 120, w: 110, h: 65 },
-  { id: "ontario", name: "Ontario", x: 210, y: 110, w: 120, h: 70 },
-  { id: "quebec", name: "Quebec", x: 340, y: 110, w: 90, h: 70 },
-  { id: "western_united_states", name: "Western US", x: 100, y: 190, w: 120, h: 65 },
-  { id: "eastern_united_states", name: "Eastern US", x: 230, y: 190, w: 120, h: 65 },
-  { id: "central_america", name: "Central America", x: 170, y: 265, w: 110, h: 65 },
-
-  { id: "venezuela", name: "Venezuela", x: 260, y: 340, w: 105, h: 70 },
-  { id: "peru", name: "Peru", x: 250, y: 420, w: 100, h: 80 },
-  { id: "brazil", name: "Brazil", x: 360, y: 400, w: 120, h: 90 },
-  { id: "argentina", name: "Argentina", x: 270, y: 510, w: 110, h: 90 },
-
-  { id: "iceland", name: "Iceland", x: 500, y: 80, w: 90, h: 55 },
-  { id: "scandinavia", name: "Scandinavia", x: 600, y: 70, w: 100, h: 70 },
-  { id: "ukraine", name: "Ukraine", x: 710, y: 110, w: 130, h: 95 },
-  { id: "great_britain", name: "Great Britain", x: 510, y: 150, w: 100, h: 65 },
-  { id: "northern_europe", name: "Northern Europe", x: 620, y: 170, w: 110, h: 70 },
-  { id: "western_europe", name: "Western Europe", x: 520, y: 230, w: 120, h: 80 },
-  { id: "southern_europe", name: "Southern Europe", x: 650, y: 240, w: 120, h: 80 },
-
-  { id: "north_africa", name: "North Africa", x: 520, y: 330, w: 145, h: 80 },
-  { id: "egypt", name: "Egypt", x: 675, y: 330, w: 95, h: 70 },
-  { id: "east_africa", name: "East Africa", x: 730, y: 410, w: 115, h: 100 },
-  { id: "congo", name: "Congo", x: 620, y: 430, w: 100, h: 85 },
-  { id: "south_africa", name: "South Africa", x: 620, y: 530, w: 120, h: 90 },
-  { id: "madagascar", name: "Madagascar", x: 760, y: 540, w: 80, h: 90 },
-
-  { id: "ural", name: "Ural", x: 860, y: 80, w: 100, h: 90 },
-  { id: "siberia", name: "Siberia", x: 970, y: 70, w: 130, h: 100 },
-  { id: "yakutsk", name: "Yakutsk", x: 1110, y: 50, w: 100, h: 90 },
-  { id: "kamchatka", name: "Kamchatka", x: 1220, y: 70, w: 120, h: 95 },
-  { id: "irkutsk", name: "Irkutsk", x: 1090, y: 160, w: 105, h: 85 },
-  { id: "mongolia", name: "Mongolia", x: 980, y: 180, w: 120, h: 90 },
-  { id: "japan", name: "Japan", x: 1240, y: 190, w: 80, h: 85 },
-  { id: "afghanistan", name: "Afghanistan", x: 850, y: 190, w: 115, h: 90 },
-  { id: "middle_east", name: "Middle East", x: 820, y: 300, w: 120, h: 90 },
-  { id: "india", name: "India", x: 940, y: 290, w: 105, h: 90 },
-  { id: "siam", name: "Siam", x: 1045, y: 305, w: 95, h: 85 },
-  { id: "china", name: "China", x: 950, y: 220, w: 145, h: 90 },
-
-  { id: "indonesia", name: "Indonesia", x: 1060, y: 420, w: 120, h: 75 },
-  { id: "new_guinea", name: "New Guinea", x: 1185, y: 430, w: 120, h: 75 },
-  { id: "western_australia", name: "Western Australia", x: 1080, y: 510, w: 120, h: 85 },
-  { id: "eastern_australia", name: "Eastern Australia", x: 1210, y: 520, w: 120, h: 85 }
+// Continent labels
+const CONTINENT_LABELS = [
+  { label: "North America", x: 170, y: 170 },
+  { label: "South America", x: 260, y: 430 },
+  { label: "Europe",        x: 490, y: 160 },
+  { label: "Africa",        x: 510, y: 370 },
+  { label: "Asia",          x: 770, y: 140 },
+  { label: "Australia",     x: 890, y: 430 },
 ];
 
 export function MapSvg({ territories, players }: MapProps) {
-  const [scale, setScale] = useState(0.85);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
-  const [hover, setHover] = useState<{ label: string; x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<{ label: string; owner: string; armies: number; x: number; y: number } | null>(null);
 
   const colorMap = useMemo(() => {
-    const mapping: Record<string, string> = {};
-    players.forEach((player) => {
-      mapping[player.id] = player.color;
-    });
-    return mapping;
+    const m: Record<string, string> = {};
+    players.forEach((p) => { m[p.id] = p.color; });
+    return m;
+  }, [players]);
+
+  const nameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    players.forEach((p) => { m[p.id] = p.name; });
+    return m;
   }, [players]);
 
   return (
-    <section className="panel map-panel">
-      <h3>World Map</h3>
-      <div
-        className="map-stage"
-        onWheel={(event) => {
-          event.preventDefault();
-          const factor = event.deltaY < 0 ? 1.1 : 0.9;
-          setScale((current) => Math.min(2.5, Math.max(0.55, current * factor)));
-        }}
-        onMouseDown={(event) => setDrag({ x: event.clientX - offset.x, y: event.clientY - offset.y })}
-        onMouseMove={(event) => {
-          if (drag) {
-            setOffset({ x: event.clientX - drag.x, y: event.clientY - drag.y });
-          }
-        }}
-        onMouseUp={() => setDrag(null)}
-        onMouseLeave={() => {
-          setDrag(null);
-          setHover(null);
-        }}
-      >
-        <svg viewBox="0 0 1380 680" role="img" aria-label="Risk map">
-          <g transform={`translate(${offset.x} ${offset.y}) scale(${scale})`}>
-            {LAYOUT.map((territory) => {
-              const state = territories[territory.id];
-              const fill = state ? colorMap[state.owner] ?? "#495057" : "#222";
-              const label = `${territory.name} • ${state?.owner ?? "-"} • ${state?.armies ?? 0}`;
-              return (
-                <g key={territory.id}>
-                  <rect
-                    id={territory.id}
-                    x={territory.x}
-                    y={territory.y}
-                    width={territory.w}
-                    height={territory.h}
-                    rx={8}
-                    fill={fill}
-                    stroke="#0f172a"
-                    strokeWidth={2}
-                    onMouseEnter={(event) =>
-                      setHover({
-                        label,
-                        x: event.clientX,
-                        y: event.clientY,
-                      })
-                    }
-                    onMouseMove={(event) => setHover({ label, x: event.clientX, y: event.clientY })}
-                  />
-                  <text
-                    x={territory.x + territory.w / 2}
-                    y={territory.y + territory.h / 2}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill="#f8f9fa"
-                    fontSize={11}
-                  >
-                    {state?.armies ?? 0}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
-        </svg>
-      </div>
+    <>
+      <svg viewBox="0 0 1020 580" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Risk world map">
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        {/* Continent labels */}
+        {CONTINENT_LABELS.map((c) => (
+          <text key={c.label} x={c.x} y={c.y} className="continent-label">{c.label}</text>
+        ))}
+
+        {/* Territory shapes */}
+        {Object.entries(TERRITORIES).map(([id, t]) => {
+          const state = territories[id];
+          const fill = state ? (colorMap[state.owner] ?? "#333") : "#222";
+          return (
+            <g key={id}>
+              <polygon
+                points={t.path.replace(/[MLZ]/g, "").replace(/,/g, " ")}
+                className="territory-shape"
+                fill={fill}
+                fillOpacity={0.75}
+                onMouseEnter={(e) => setHover({
+                  label: t.name,
+                  owner: state ? (nameMap[state.owner] ?? state.owner) : "—",
+                  armies: state?.armies ?? 0,
+                  x: e.clientX, y: e.clientY,
+                })}
+                onMouseMove={(e) => hover && setHover({ ...hover, x: e.clientX, y: e.clientY })}
+                onMouseLeave={() => setHover(null)}
+              />
+              {/* Army count circle */}
+              {state && (
+                <>
+                  <circle cx={t.cx} cy={t.cy} r={10} fill="rgba(0,0,0,0.55)" className="territory-count-bg" />
+                  <text x={t.cx} y={t.cy + 1} className="territory-count">{state.armies}</text>
+                </>
+              )}
+              {/* Territory name */}
+              <text x={t.cx} y={t.cy - 14} className="territory-label">{t.name}</text>
+            </g>
+          );
+        })}
+      </svg>
+
       {hover && (
-        <div className="map-tooltip" style={{ left: hover.x + 10, top: hover.y + 10 }}>
-          {hover.label}
+        <div className="map-tooltip" style={{ left: hover.x + 12, top: hover.y + 12 }}>
+          <div className="tt-name">{hover.label}</div>
+          <div className="tt-owner">Owner: {hover.owner}</div>
+          <div className="tt-armies">Armies: {hover.armies}</div>
         </div>
       )}
-    </section>
+    </>
   );
 }

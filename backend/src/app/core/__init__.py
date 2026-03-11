@@ -1,1 +1,1 @@
-"""Core game logic package."""
+"""Package."""

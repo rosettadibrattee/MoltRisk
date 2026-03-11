@@ -1,18 +1,13 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-
 from app.core.engine import game_manager
 from app.core.state import ActionBundle, GameState
 
 router = APIRouter(prefix="/api", tags=["games"])
 
-
 class CreateGameRequest(BaseModel):
     map_id: str = "classic"
     seed: int | None = None
-
 
 class AgentPlayerRequest(BaseModel):
     name: str
@@ -23,50 +18,33 @@ class AgentPlayerRequest(BaseModel):
     personality: dict[str, float] = Field(default_factory=dict)
     tier: str = "normal"
 
-
 class HumanPlayerRequest(BaseModel):
     name: str
 
-
 @router.post("/games", response_model=GameState)
-def create_game(req: CreateGameRequest) -> GameState:
-    try:
-        return game_manager.create_game(map_id=req.map_id, seed=req.seed)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
+def create_game(req: CreateGameRequest):
+    try: return game_manager.create_game(map_id=req.map_id, seed=req.seed)
+    except ValueError as e: raise HTTPException(400, str(e))
 
 @router.get("/games/{game_id}", response_model=GameState)
-def get_game(game_id: str) -> GameState:
-    try:
-        return game_manager.get_game(game_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
+def get_game(game_id: str):
+    try: return game_manager.get_game(game_id)
+    except KeyError as e: raise HTTPException(404, str(e))
 
 @router.post("/games/{game_id}/players/agent")
 def add_agent(game_id: str, req: AgentPlayerRequest):
-    try:
-        return game_manager.add_agent_player(game_id, req.model_dump())
-    except (KeyError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
+    try: return game_manager.add_agent_player(game_id, req.model_dump())
+    except (KeyError, ValueError) as e: raise HTTPException(400, str(e))
 
 @router.post("/games/{game_id}/players/human")
 def add_human(game_id: str, req: HumanPlayerRequest):
-    try:
-        return game_manager.add_human_player(game_id, req.name)
-    except (KeyError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
+    try: return game_manager.add_human_player(game_id, req.name)
+    except (KeyError, ValueError) as e: raise HTTPException(400, str(e))
 
 @router.post("/games/{game_id}/start", response_model=GameState)
-async def start_game(game_id: str) -> GameState:
-    try:
-        return await game_manager.start_game(game_id)
-    except (KeyError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
+async def start_game(game_id: str):
+    try: return await game_manager.start_game(game_id)
+    except (KeyError, ValueError) as e: raise HTTPException(400, str(e))
 
 @router.post("/games/{game_id}/actions")
 async def submit_human_action(game_id: str, action: ActionBundle):
