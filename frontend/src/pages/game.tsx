@@ -172,6 +172,7 @@ export function GamePage() {
 
   const shortId = state.game_id ? state.game_id.slice(0, 12) + "…" : "—";
   const currentPlayerInfo = state.players.find((p) => p.id === state.current_player);
+  const winnerInfo = state.players.find((p) => p.id === state.winner);
   const phaseIndex = PHASES.indexOf(state.phase as typeof PHASES[number]);
 
   return (
@@ -213,7 +214,7 @@ export function GamePage() {
                 style={{ background: currentPlayerInfo.color }}
               />
             )}
-            {state.current_player ?? "—"}
+            {currentPlayerInfo?.name ?? state.current_player ?? "—"}
           </span>
         </div>
         <div className="status-sep" />
@@ -254,7 +255,7 @@ export function GamePage() {
       {state.winner && (
         <div className="winner-banner">
           <span className="winner-banner-label">Winner</span>
-          <span className="winner-banner-name">{state.winner}</span>
+          <span className="winner-banner-name">{winnerInfo?.name ?? state.winner}</span>
         </div>
       )}
 

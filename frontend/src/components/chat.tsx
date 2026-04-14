@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ChatMessage, Player } from "../api/types";
 
@@ -12,6 +12,13 @@ export function ChatPanel({ messages, players, onSend }: ChatProps) {
   const [channel, setChannel] = useState<"public" | "dm">("public");
   const [target, setTarget] = useState<string>(players[0]?.id ?? "");
   const [text, setText] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const playerNames = useMemo(() => {
+    const names: Record<string, string> = {};
+    for (const player of players) names[player.id] = player.name;
+    return names;
+  }, [players]);
 
   const filtered = useMemo(() => {
     if (channel === "public") {
@@ -19,6 +26,10 @@ export function ChatPanel({ messages, players, onSend }: ChatProps) {
     }
     return messages.filter((m) => m.channel === "dm");
   }, [channel, messages]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [filtered]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -62,13 +73,14 @@ export function ChatPanel({ messages, players, onSend }: ChatProps) {
       <div className="chat-stream">
         {filtered.slice(-100).map((msg) => (
           <div key={msg.id} className="chat-msg">
-            <span className="chat-from">{msg.from_player}</span>
+            <span className="chat-from">{playerNames[msg.from_player] ?? msg.from_player}</span>
             <span className="chat-text">
-              {msg.to_player ? `→ ${msg.to_player}: ` : ""}
+              {msg.to_player ? `→ ${playerNames[msg.to_player] ?? msg.to_player}: ` : ""}
               {msg.text}
             </span>
           </div>
         ))}
+        <div ref={endRef} />
       </div>
 
       <form className="chat-form" onSubmit={submit}>

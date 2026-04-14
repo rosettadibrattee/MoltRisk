@@ -36,12 +36,7 @@ class Personality(BaseModel):
 
 
 class Mission(BaseModel):
-    type: Literal[
-        "control_24",
-        "control_18_two_armies",
-        "control_continents",
-        "destroy_player",
-    ]
+    type: Literal["control_24", "control_18_two_armies", "control_continents", "destroy_player"]
     target_player: str | None = None
     continents: list[str] | None = None
 
@@ -99,13 +94,7 @@ class GameEvent(BaseModel):
 
 
 class PhaseAction(BaseModel):
-    type: Literal[
-        "reinforce",
-        "attack",
-        "fortify",
-        "trade_cards",
-        "exchange_card",
-    ]
+    type: Literal["reinforce", "attack", "fortify", "trade_cards", "exchange_card"]
     territory: str | None = None
     units: int | None = None
     from_territory: str | None = None

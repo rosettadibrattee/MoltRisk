@@ -1,2 +1,1 @@
-"""MoltRisk backend package."""
-
+"""MoltRisk backend."""
