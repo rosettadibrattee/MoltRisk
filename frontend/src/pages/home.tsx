@@ -28,19 +28,13 @@ export function HomePage() {
   });
 
   const [humanName, setHumanName] = useState("Human");
-
   const canStart = useMemo(() => !!game && game.players.length >= 2, [game]);
-
-  const refreshGame = async (state: GameState) => {
-    setGame(state);
-  };
 
   const create = async () => {
     setBusy(true);
     setError("");
     try {
-      const created = await createGame();
-      await refreshGame(created);
+      setGame(await createGame());
     } catch (err) {
       setError(String(err));
     } finally {
@@ -50,22 +44,14 @@ export function HomePage() {
 
   const onAddAgent = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!game) {
-      return;
-    }
+    if (!game) return;
     setBusy(true);
     setError("");
     try {
-      await addAgent(game.game_id, {
-        ...agent,
-        api_key: agent.api_key || null,
-      });
+      await addAgent(game.game_id, { ...agent, api_key: agent.api_key || null });
       const updated = await getGame(game.game_id);
       setGame(updated);
-      setAgent((prev) => ({
-        ...prev,
-        name: `Agent ${updated.players.length + 1}`,
-      }));
+      setAgent((prev) => ({ ...prev, name: `Agent ${updated.players.length + 1}` }));
     } catch (err) {
       setError(String(err));
     } finally {
@@ -75,15 +61,12 @@ export function HomePage() {
 
   const onAddHuman = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!game) {
-      return;
-    }
+    if (!game) return;
     setBusy(true);
     setError("");
     try {
       await addHuman(game.game_id, humanName);
-      const updated = await getGame(game.game_id);
-      setGame(updated);
+      setGame(await getGame(game.game_id));
     } catch (err) {
       setError(String(err));
     } finally {
@@ -92,9 +75,7 @@ export function HomePage() {
   };
 
   const onStart = async () => {
-    if (!game) {
-      return;
-    }
+    if (!game) return;
     setBusy(true);
     setError("");
     try {
@@ -109,106 +90,203 @@ export function HomePage() {
 
   return (
     <main className="home-page">
-      <header className="hero">
-        <h1>MoltRisk</h1>
-        <p>Local AI Agent Risk Game</p>
+      {/* App bar */}
+      <header className="home-app-bar">
+        <div>
+          <div className="home-wordmark">MoltRisk</div>
+          {!game && <div className="home-tagline">Local AI Agent Risk Game</div>}
+        </div>
+        {game && (
+          <span className="chip chip--primary">
+            {game.game_id.slice(0, 14)}…
+          </span>
+        )}
       </header>
 
+      {/* No game: big CTA */}
       {!game && (
-        <section className="panel">
-          <h3>Create Game</h3>
-          <button disabled={busy} onClick={create}>
-            Create Classic Game
+        <div className="home-create-section">
+          <button className="home-create-cta" disabled={busy} onClick={create}>
+            New Game
           </button>
-        </section>
+        </div>
       )}
 
+      {/* Lobby */}
       {game && (
-        <>
+        <div className="home-lobby">
+          {/* Players */}
           <section className="panel">
-            <h3>Lobby</h3>
-            <p>Game ID: {game.game_id}</p>
-            <p>Players: {game.players.length}/8</p>
+            <div className="home-players-header">
+              <span className="panel-title">Players</span>
+              <span className="chip">{game.players.length} / 8</span>
+              {canStart && (
+                <span className="chip chip--success chip--dot">Ready</span>
+              )}
+            </div>
+            <div className="home-players-chips">
+              {game.players.length === 0 && (
+                <span style={{ color: "var(--muted)", fontSize: "0.8125rem" }}>
+                  No players yet
+                </span>
+              )}
+              {game.players.map((player) => (
+                <span
+                  key={player.id}
+                  className="chip"
+                  style={{ borderColor: player.color, color: player.color }}
+                >
+                  {player.name} · {player.kind}
+                </span>
+              ))}
+            </div>
           </section>
 
-          <section className="grid-two">
-            <form className="panel" onSubmit={onAddAgent}>
-              <h3>Add Agent</h3>
-              <input value={agent.name} onChange={(e) => setAgent((s) => ({ ...s, name: e.target.value }))} placeholder="Name" />
-              <select
-                value={agent.provider}
-                onChange={(e) => setAgent((s) => ({ ...s, provider: e.target.value as AgentCreateInput["provider"] }))}
-              >
-                <option value="heuristic">heuristic</option>
-                <option value="ollama">ollama</option>
-                <option value="openai_compat">openai_compat</option>
-              </select>
-              <input value={agent.model} onChange={(e) => setAgent((s) => ({ ...s, model: e.target.value }))} placeholder="Model" />
-              <input
-                value={agent.endpoint}
-                onChange={(e) => setAgent((s) => ({ ...s, endpoint: e.target.value }))}
-                placeholder="Endpoint"
-              />
-              <input
-                type="password"
-                value={agent.api_key ?? ""}
-                onChange={(e) => setAgent((s) => ({ ...s, api_key: e.target.value }))}
-                placeholder="API key (optional)"
-              />
-              <select value={agent.tier} onChange={(e) => setAgent((s) => ({ ...s, tier: e.target.value as AgentCreateInput["tier"] }))}>
-                <option value="easy">easy</option>
-                <option value="normal">normal</option>
-                <option value="hard">hard</option>
-              </select>
-              {(["aggression", "deception", "cooperation", "risk"] as const).map((key) => (
-                <label key={key}>
-                  {key}: {agent.personality[key].toFixed(2)}
+          {/* Add forms */}
+          <div className="home-add-forms">
+            <section className="panel">
+              <form className="home-form" onSubmit={onAddAgent}>
+                <span className="home-form-title">Add Agent</span>
+
+                <label>
+                  Name
                   <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={agent.personality[key]}
-                    onChange={(e) =>
-                      setAgent((s) => ({
-                        ...s,
-                        personality: { ...s.personality, [key]: Number(e.target.value) },
-                      }))
-                    }
+                    value={agent.name}
+                    onChange={(e) => setAgent((s) => ({ ...s, name: e.target.value }))}
+                    placeholder="Agent name"
                   />
                 </label>
-              ))}
-              <button disabled={busy || game.players.length >= 8} type="submit">
-                Add Agent
-              </button>
-            </form>
 
-            <form className="panel" onSubmit={onAddHuman}>
-              <h3>Add Human</h3>
-              <input value={humanName} onChange={(e) => setHumanName(e.target.value)} placeholder="Human name" />
-              <button disabled={busy || game.players.length >= 8} type="submit">
-                Add Human
-              </button>
-              <h4>Current Players</h4>
-              <ul>
-                {game.players.map((player) => (
-                  <li key={player.id}>
-                    {player.name} ({player.kind})
-                  </li>
-                ))}
-              </ul>
-            </form>
-          </section>
+                <label>
+                  Provider
+                  <select
+                    value={agent.provider}
+                    onChange={(e) =>
+                      setAgent((s) => ({ ...s, provider: e.target.value as AgentCreateInput["provider"] }))
+                    }
+                  >
+                    <option value="heuristic">Heuristic</option>
+                    <option value="ollama">Ollama</option>
+                    <option value="openai_compat">OpenAI Compat</option>
+                  </select>
+                </label>
 
-          <section className="panel">
-            <button disabled={!canStart || busy} onClick={onStart}>
+                <label>
+                  Model
+                  <input
+                    value={agent.model}
+                    onChange={(e) => setAgent((s) => ({ ...s, model: e.target.value }))}
+                    placeholder="e.g. llama3.1:8b"
+                  />
+                </label>
+
+                <label>
+                  Endpoint
+                  <input
+                    value={agent.endpoint}
+                    onChange={(e) => setAgent((s) => ({ ...s, endpoint: e.target.value }))}
+                    placeholder="http://..."
+                  />
+                </label>
+
+                <label>
+                  API Key
+                  <input
+                    type="password"
+                    value={agent.api_key ?? ""}
+                    onChange={(e) => setAgent((s) => ({ ...s, api_key: e.target.value }))}
+                    placeholder="Optional"
+                  />
+                </label>
+
+                <label>
+                  Tier
+                  <select
+                    value={agent.tier}
+                    onChange={(e) =>
+                      setAgent((s) => ({ ...s, tier: e.target.value as AgentCreateInput["tier"] }))
+                    }
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="normal">Normal</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </label>
+
+                <div className="personality-grid">
+                  {(["aggression", "deception", "cooperation", "risk"] as const).map((key) => (
+                    <div className="personality-row" key={key}>
+                      <span>
+                        {key[0].toUpperCase() + key.slice(1)}{" "}
+                        <strong style={{ color: "var(--on-surf)" }}>
+                          {agent.personality[key].toFixed(2)}
+                        </strong>
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={agent.personality[key]}
+                        onChange={(e) =>
+                          setAgent((s) => ({
+                            ...s,
+                            personality: { ...s.personality, [key]: Number(e.target.value) },
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  className="btn-tonal"
+                  disabled={busy || game.players.length >= 8}
+                  type="submit"
+                >
+                  Add Agent
+                </button>
+              </form>
+            </section>
+
+            <section className="panel">
+              <form className="home-form" onSubmit={onAddHuman}>
+                <span className="home-form-title">Add Human</span>
+
+                <label>
+                  Name
+                  <input
+                    value={humanName}
+                    onChange={(e) => setHumanName(e.target.value)}
+                    placeholder="Player name"
+                  />
+                </label>
+
+                <button
+                  className="btn-tonal"
+                  disabled={busy || game.players.length >= 8}
+                  type="submit"
+                >
+                  Add Human
+                </button>
+              </form>
+            </section>
+          </div>
+
+          {/* Start */}
+          <div className="home-start-bar">
+            <button
+              className="home-start-btn"
+              disabled={!canStart || busy}
+              onClick={onStart}
+            >
               Start Game
             </button>
-          </section>
-        </>
+          </div>
+        </div>
       )}
 
-      {error && <p className="error">{error}</p>}
+      {error && <p className="error-msg">{error}</p>}
     </main>
   );
 }

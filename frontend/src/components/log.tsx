@@ -8,14 +8,15 @@ export function ActionLog({ events }: LogProps) {
   const rows = events.slice(-80).reverse();
   return (
     <section className="panel action-log">
-      <h3>Action Log</h3>
-      <ul>
+      <span className="panel-title">Action Log</span>
+      <div className="action-log-scroll">
         {rows.map((event) => (
-          <li key={event.id}>
-            <strong>{event.type}</strong> <code>{JSON.stringify(event.data)}</code>
-          </li>
+          <div key={event.id} className="log-row">
+            <span className="log-type">{event.type}</span>
+            <span className="log-data">{JSON.stringify(event.data)}</span>
+          </div>
         ))}
-      </ul>
+      </div>
     </section>
   );
 }

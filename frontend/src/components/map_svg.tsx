@@ -1,152 +1,260 @@
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import type { Player, TerritoryState } from "../api/types";
+import riskBoardSvg from "../assets/risk_board.svg?raw";
+import type { TerritoryState } from "../api/types";
+
+const SVG_TO_GAME: Record<string, string> = { yakursk: "yakutsk" };
+const GAME_TO_SVG: Record<string, string> = { yakutsk: "yakursk" };
+
+const TERRITORY_IDS = [
+  "alaska", "northwest_territory", "greenland", "alberta", "ontario", "quebec",
+  "western_united_states", "eastern_united_states", "central_america",
+  "venezuela", "peru", "brazil", "argentina",
+  "iceland", "scandinavia", "ukraine", "great_britain", "northern_europe",
+  "western_europe", "southern_europe",
+  "north_africa", "egypt", "east_africa", "congo", "south_africa", "madagascar",
+  "ural", "siberia", "yakutsk", "kamchatka", "irkutsk", "mongolia", "japan",
+  "afghanistan", "middle_east", "india", "siam", "china",
+  "indonesia", "new_guinea", "western_australia", "eastern_australia",
+];
+
+// Cross-sea connections that aren't obvious from contiguous borders
+const SEA_ROUTES: [string, string][] = [
+  ["alaska",           "kamchatka"],
+  ["greenland",        "iceland"],
+  ["brazil",           "north_africa"],
+  ["western_europe",   "north_africa"],
+  ["southern_europe",  "north_africa"],
+  ["southern_europe",  "egypt"],
+  ["east_africa",      "middle_east"],
+  ["kamchatka",        "japan"],
+  ["siam",             "indonesia"],
+  ["madagascar",       "east_africa"],
+  ["south_africa",     "madagascar"],
+];
+
+const CONTINENT_COLORS: Record<string, string> = {
+  alaska: "#F4A261", northwest_territory: "#F4A261", greenland: "#F4A261",
+  alberta: "#F4A261", ontario: "#F4A261", quebec: "#F4A261",
+  western_united_states: "#F4A261", eastern_united_states: "#F4A261", central_america: "#F4A261",
+  venezuela: "#E76F51", peru: "#E76F51", brazil: "#E76F51", argentina: "#E76F51",
+  iceland: "#A8DADC", scandinavia: "#A8DADC", ukraine: "#A8DADC",
+  great_britain: "#A8DADC", northern_europe: "#A8DADC",
+  western_europe: "#A8DADC", southern_europe: "#A8DADC",
+  north_africa: "#E9C46A", egypt: "#E9C46A", east_africa: "#E9C46A",
+  congo: "#E9C46A", south_africa: "#E9C46A", madagascar: "#E9C46A",
+  ural: "#8ECAE6", siberia: "#8ECAE6", yakutsk: "#8ECAE6", kamchatka: "#8ECAE6",
+  irkutsk: "#8ECAE6", mongolia: "#8ECAE6", japan: "#8ECAE6",
+  afghanistan: "#8ECAE6", middle_east: "#8ECAE6", india: "#8ECAE6",
+  siam: "#8ECAE6", china: "#8ECAE6",
+  indonesia: "#B5E48C", new_guinea: "#B5E48C",
+  western_australia: "#B5E48C", eastern_australia: "#B5E48C",
+};
+
+const LAYER4_TX = -167.99651;
+const LAYER4_TY = -118.55507;
+// SVG natural width — used to wrap alaska↔kamchatka across the date line
+const SVG_WIDTH = 749.81909;
 
 interface MapProps {
   territories: Record<string, TerritoryState>;
-  players: Player[];
+  playerColors?: Record<string, string>;
 }
 
-type TerritoryLayout = {
-  id: string;
-  name: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-};
-
-const LAYOUT: TerritoryLayout[] = [
-  { id: "alaska", name: "Alaska", x: 20, y: 40, w: 110, h: 70 },
-  { id: "northwest_territory", name: "Northwest Territory", x: 140, y: 40, w: 130, h: 70 },
-  { id: "greenland", name: "Greenland", x: 280, y: 20, w: 130, h: 80 },
-  { id: "alberta", name: "Alberta", x: 90, y: 120, w: 110, h: 65 },
-  { id: "ontario", name: "Ontario", x: 210, y: 110, w: 120, h: 70 },
-  { id: "quebec", name: "Quebec", x: 340, y: 110, w: 90, h: 70 },
-  { id: "western_united_states", name: "Western US", x: 100, y: 190, w: 120, h: 65 },
-  { id: "eastern_united_states", name: "Eastern US", x: 230, y: 190, w: 120, h: 65 },
-  { id: "central_america", name: "Central America", x: 170, y: 265, w: 110, h: 65 },
-
-  { id: "venezuela", name: "Venezuela", x: 260, y: 340, w: 105, h: 70 },
-  { id: "peru", name: "Peru", x: 250, y: 420, w: 100, h: 80 },
-  { id: "brazil", name: "Brazil", x: 360, y: 400, w: 120, h: 90 },
-  { id: "argentina", name: "Argentina", x: 270, y: 510, w: 110, h: 90 },
-
-  { id: "iceland", name: "Iceland", x: 500, y: 80, w: 90, h: 55 },
-  { id: "scandinavia", name: "Scandinavia", x: 600, y: 70, w: 100, h: 70 },
-  { id: "ukraine", name: "Ukraine", x: 710, y: 110, w: 130, h: 95 },
-  { id: "great_britain", name: "Great Britain", x: 510, y: 150, w: 100, h: 65 },
-  { id: "northern_europe", name: "Northern Europe", x: 620, y: 170, w: 110, h: 70 },
-  { id: "western_europe", name: "Western Europe", x: 520, y: 230, w: 120, h: 80 },
-  { id: "southern_europe", name: "Southern Europe", x: 650, y: 240, w: 120, h: 80 },
-
-  { id: "north_africa", name: "North Africa", x: 520, y: 330, w: 145, h: 80 },
-  { id: "egypt", name: "Egypt", x: 675, y: 330, w: 95, h: 70 },
-  { id: "east_africa", name: "East Africa", x: 730, y: 410, w: 115, h: 100 },
-  { id: "congo", name: "Congo", x: 620, y: 430, w: 100, h: 85 },
-  { id: "south_africa", name: "South Africa", x: 620, y: 530, w: 120, h: 90 },
-  { id: "madagascar", name: "Madagascar", x: 760, y: 540, w: 80, h: 90 },
-
-  { id: "ural", name: "Ural", x: 860, y: 80, w: 100, h: 90 },
-  { id: "siberia", name: "Siberia", x: 970, y: 70, w: 130, h: 100 },
-  { id: "yakutsk", name: "Yakutsk", x: 1110, y: 50, w: 100, h: 90 },
-  { id: "kamchatka", name: "Kamchatka", x: 1220, y: 70, w: 120, h: 95 },
-  { id: "irkutsk", name: "Irkutsk", x: 1090, y: 160, w: 105, h: 85 },
-  { id: "mongolia", name: "Mongolia", x: 980, y: 180, w: 120, h: 90 },
-  { id: "japan", name: "Japan", x: 1240, y: 190, w: 80, h: 85 },
-  { id: "afghanistan", name: "Afghanistan", x: 850, y: 190, w: 115, h: 90 },
-  { id: "middle_east", name: "Middle East", x: 820, y: 300, w: 120, h: 90 },
-  { id: "india", name: "India", x: 940, y: 290, w: 105, h: 90 },
-  { id: "siam", name: "Siam", x: 1045, y: 305, w: 95, h: 85 },
-  { id: "china", name: "China", x: 950, y: 220, w: 145, h: 90 },
-
-  { id: "indonesia", name: "Indonesia", x: 1060, y: 420, w: 120, h: 75 },
-  { id: "new_guinea", name: "New Guinea", x: 1185, y: 430, w: 120, h: 75 },
-  { id: "western_australia", name: "Western Australia", x: 1080, y: 510, w: 120, h: 85 },
-  { id: "eastern_australia", name: "Eastern Australia", x: 1210, y: 520, w: 120, h: 85 }
-];
-
-export function MapSvg({ territories, players }: MapProps) {
-  const [scale, setScale] = useState(0.85);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
+export function MapSvg({ territories, playerColors = {} }: MapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ label: string; x: number; y: number } | null>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
 
-  const colorMap = useMemo(() => {
-    const mapping: Record<string, string> = {};
-    players.forEach((player) => {
-      mapping[player.id] = player.color;
-    });
-    return mapping;
-  }, [players]);
+  // Shared helper: get center of a territory in SVG root userspace
+  const getCenter = (svg: SVGSVGElement, id: string): { x: number; y: number } | null => {
+    const svgId = GAME_TO_SVG[id] ?? id;
+    const el = svg.getElementById(svgId) as SVGGraphicsElement | null;
+    if (!el) return null;
+    const bbox = el.getBBox();
+    return { x: bbox.x + bbox.width / 2 + LAYER4_TX, y: bbox.y + bbox.height / 2 + LAYER4_TY };
+  };
+
+  // Apply continent border colors + ownership fill tints
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const svg = container.querySelector("svg") as SVGSVGElement | null;
+    if (!svg) return;
+
+    for (const id of TERRITORY_IDS) {
+      const svgId = GAME_TO_SVG[id] ?? id;
+      const el = svg.getElementById(svgId) as SVGElement | null;
+      if (!el) continue;
+      const s = (el as SVGElement).style;
+      s.stroke = CONTINENT_COLORS[id] ?? "#888";
+      s.strokeWidth = "0.8px";
+      s.strokeOpacity = "1";
+      s.filter = "none";
+      const owner = territories[id]?.owner;
+      const ownerColor = owner ? (playerColors[owner] ?? null) : null;
+      s.fill = ownerColor ? ownerColor + "30" : "transparent";
+      s.fillOpacity = "1";
+    }
+  }, [territories, playerColors]);
+
+  // Inject army labels + sea-route connection lines into the SVG DOM
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const svg = container.querySelector("svg") as SVGSVGElement | null;
+    if (!svg) return;
+
+    const NS = "http://www.w3.org/2000/svg";
+
+    // ── Sea route lines ──────────────────────────────────────
+    const oldLines = svg.getElementById("__sea-routes__");
+    if (oldLines) oldLines.remove();
+
+    const lineGroup = document.createElementNS(NS, "g");
+    lineGroup.setAttribute("id", "__sea-routes__");
+    lineGroup.setAttribute("pointer-events", "none");
+
+    for (const [a, b] of SEA_ROUTES) {
+      const ca = getCenter(svg, a);
+      const cb = getCenter(svg, b);
+      if (!ca || !cb) continue;
+
+      // alaska↔kamchatka wraps across the date line — draw two stub lines to edges
+      if ((a === "alaska" && b === "kamchatka") || (a === "kamchatka" && b === "alaska")) {
+        // alaska is left (~58,89), kamchatka is right (~609,71)
+        // Draw line from alaska to left edge and from kamchatka to right edge
+        for (const [px, py, ex, ey] of [
+          [ca.x, ca.y, 0, ca.y],
+          [cb.x, cb.y, SVG_WIDTH, cb.y],
+        ] as [number, number, number, number][]) {
+          const line = document.createElementNS(NS, "line");
+          line.setAttribute("x1", String(px));
+          line.setAttribute("y1", String(py));
+          line.setAttribute("x2", String(ex));
+          line.setAttribute("y2", String(ey));
+          line.setAttribute("stroke", "rgba(255,255,255,0.25)");
+          line.setAttribute("stroke-width", "0.6");
+          line.setAttribute("stroke-dasharray", "2 2");
+          lineGroup.appendChild(line);
+        }
+        continue;
+      }
+
+      const line = document.createElementNS(NS, "line");
+      line.setAttribute("x1", String(ca.x));
+      line.setAttribute("y1", String(ca.y));
+      line.setAttribute("x2", String(cb.x));
+      line.setAttribute("y2", String(cb.y));
+      line.setAttribute("stroke", "rgba(255,255,255,0.25)");
+      line.setAttribute("stroke-width", "0.6");
+      line.setAttribute("stroke-dasharray", "2 2");
+      lineGroup.appendChild(line);
+    }
+
+    // Insert lines BEFORE army labels so labels render on top
+    svg.insertBefore(lineGroup, svg.firstChild);
+
+    // ── Army labels ──────────────────────────────────────────
+    const oldGroup = svg.getElementById("__army-labels__");
+    if (oldGroup) oldGroup.remove();
+
+    const labelGroup = document.createElementNS(NS, "g");
+    labelGroup.setAttribute("id", "__army-labels__");
+    labelGroup.setAttribute("pointer-events", "none");
+
+    for (const id of TERRITORY_IDS) {
+      const c = getCenter(svg, id);
+      if (!c) continue;
+
+      const st = territories[id];
+      const armies = st?.armies ?? 0;
+      const owner = st?.owner;
+      const ownerColor = owner ? (playerColors[owner] ?? "#888") : null;
+
+      if (ownerColor) {
+        const circle = document.createElementNS(NS, "circle");
+        circle.setAttribute("cx", String(c.x));
+        circle.setAttribute("cy", String(c.y));
+        circle.setAttribute("r", "5");
+        circle.setAttribute("fill", ownerColor);
+        circle.setAttribute("opacity", "0.85");
+        labelGroup.appendChild(circle);
+      }
+
+      const text = document.createElementNS(NS, "text");
+      text.setAttribute("x", String(c.x));
+      text.setAttribute("y", String(c.y));
+      text.setAttribute("text-anchor", "middle");
+      text.setAttribute("dominant-baseline", "central");
+      text.setAttribute("fill", ownerColor ? "#fff" : "rgba(202,196,208,0.7)");
+      text.setAttribute("font-size", "4.5");
+      text.setAttribute("font-family", "'Roboto Condensed', sans-serif");
+      text.setAttribute("font-weight", "700");
+      text.style.userSelect = "none";
+      text.textContent = String(armies);
+      labelGroup.appendChild(text);
+    }
+
+    svg.appendChild(labelGroup);
+  }, [territories, playerColors]);
+
+  const resolveTerritory = (target: Element): string | null => {
+    let el: Element | null = target;
+    while (el && el !== containerRef.current) {
+      if (el.id) {
+        const gameId = SVG_TO_GAME[el.id] ?? el.id;
+        if (TERRITORY_IDS.includes(gameId)) return gameId;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  };
+
+  const transform = `translate(${offset.x}px,${offset.y}px)`;
 
   return (
     <section className="panel map-panel">
-      <h3>World Map</h3>
+      <span className="panel-title">World Map</span>
       <div
         className="map-stage"
-        onWheel={(event) => {
-          event.preventDefault();
-          const factor = event.deltaY < 0 ? 1.1 : 0.9;
-          setScale((current) => Math.min(2.5, Math.max(0.55, current * factor)));
+        onMouseDown={(e) => {
+          dragRef.current = { sx: e.clientX, sy: e.clientY, ox: offset.x, oy: offset.y };
         }}
-        onMouseDown={(event) => setDrag({ x: event.clientX - offset.x, y: event.clientY - offset.y })}
-        onMouseMove={(event) => {
-          if (drag) {
-            setOffset({ x: event.clientX - drag.x, y: event.clientY - drag.y });
+        onMouseMove={(e) => {
+          if (dragRef.current) {
+            setOffset({
+              x: dragRef.current.ox + (e.clientX - dragRef.current.sx),
+              y: dragRef.current.oy + (e.clientY - dragRef.current.sy),
+            });
+            return;
+          }
+          const id = resolveTerritory(e.target as Element);
+          if (id) {
+            const st = territories[id];
+            setHover({
+              label: `${id.replace(/_/g, " ")} · ${st?.owner ?? "—"} · ${st?.armies ?? 0}`,
+              x: e.clientX,
+              y: e.clientY,
+            });
+          } else {
+            setHover(null);
           }
         }}
-        onMouseUp={() => setDrag(null)}
-        onMouseLeave={() => {
-          setDrag(null);
-          setHover(null);
-        }}
+        onMouseUp={() => { dragRef.current = null; }}
+        onMouseLeave={() => { dragRef.current = null; setHover(null); }}
       >
-        <svg viewBox="0 0 1380 680" role="img" aria-label="Risk map">
-          <g transform={`translate(${offset.x} ${offset.y}) scale(${scale})`}>
-            {LAYOUT.map((territory) => {
-              const state = territories[territory.id];
-              const fill = state ? colorMap[state.owner] ?? "#495057" : "#222";
-              const label = `${territory.name} • ${state?.owner ?? "-"} • ${state?.armies ?? 0}`;
-              return (
-                <g key={territory.id}>
-                  <rect
-                    id={territory.id}
-                    x={territory.x}
-                    y={territory.y}
-                    width={territory.w}
-                    height={territory.h}
-                    rx={8}
-                    fill={fill}
-                    stroke="#0f172a"
-                    strokeWidth={2}
-                    onMouseEnter={(event) =>
-                      setHover({
-                        label,
-                        x: event.clientX,
-                        y: event.clientY,
-                      })
-                    }
-                    onMouseMove={(event) => setHover({ label, x: event.clientX, y: event.clientY })}
-                  />
-                  <text
-                    x={territory.x + territory.w / 2}
-                    y={territory.y + territory.h / 2}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill="#f8f9fa"
-                    fontSize={11}
-                  >
-                    {state?.armies ?? 0}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
-        </svg>
+        <div
+          ref={containerRef}
+          className="risk-svg-container"
+          style={{ transform, transformOrigin: "0 0" }}
+          dangerouslySetInnerHTML={{ __html: riskBoardSvg }}
+        />
       </div>
+
       {hover && (
-        <div className="map-tooltip" style={{ left: hover.x + 10, top: hover.y + 10 }}>
+        <div className="map-tooltip" style={{ left: hover.x + 12, top: hover.y + 12 }}>
           {hover.label}
         </div>
       )}

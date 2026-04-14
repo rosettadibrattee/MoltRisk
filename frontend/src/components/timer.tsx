@@ -12,15 +12,16 @@ export function Timer({ deadlineTs }: TimerProps) {
     return () => window.clearInterval(interval);
   }, []);
 
-  if (!deadlineTs) {
-    return <span className="timer">--:--</span>;
-  }
+  if (!deadlineTs) return <span className="timer">—</span>;
 
   const remaining = Math.max(0, Math.floor(deadlineTs - now));
-  const mm = Math.floor(remaining / 60)
-    .toString()
-    .padStart(2, "0");
+  const mm = Math.floor(remaining / 60).toString().padStart(2, "0");
   const ss = (remaining % 60).toString().padStart(2, "0");
+  const urgent = remaining < 30 && remaining > 0;
 
-  return <span className="timer">{mm}:{ss}</span>;
+  return (
+    <span className="timer" style={urgent ? { color: "var(--error)" } : undefined}>
+      {mm}:{ss}
+    </span>
+  );
 }
